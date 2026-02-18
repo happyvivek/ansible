@@ -1,0 +1,41 @@
+---
+- name: Run command on all running VMs using OCI Instance Agent
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    region: "us-ashburn-1"
+    compartment_ocid: "ocid1.compartment.oc1..aaaaaaaaswfncccqcgnx77btfb42d2fzclr54ewepxnfvquwzvvhtf6vibea"
+
+  tasks:
+
+    - name: Get all compute instances
+      oracle.oci.oci_compute_instance_facts:
+        compartment_id: "{{ compartment_ocid }}"
+        region: "{{ region }}"
+      register: instance_list
+
+    - name: Filter RUNNING instances
+      set_fact:
+        running_instances: >
+          {{ instance_list.instances
+             | selectattr('lifecycle_state','equalto','RUNNING')
+             | list }}
+
+    - name: Run command via Instance Agent
+      oracle.oci.oci_compute_instance_agent_instance_agent_command:
+        region: "{{ region }}"
+        instance_id: "{{ item.id }}"
+        display_name: "ansible-run-command"
+        command:
+          content: |
+            #!/bin/bash
+            echo "Running on $(hostname)"
+            uptime
+      loop: "{{ running_instances }}"
+      register: run_result
+
+    - name: Show command IDs
+      debug:
+        var: run_result
