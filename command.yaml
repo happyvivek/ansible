@@ -14,7 +14,11 @@
     compartment_ocid: "ocid1.compartment.oc1..aaaaaaaaswfncccqcgnx77btfb42d2fzclr54ewepxnfvquwzvvhtf6vibea"
 
   tasks:
-
+    - name: Show installed collections inside AWX job
+      command: ansible-galaxy collection list
+      register: col_output
+    - debug:
+        var: col_output.stdout          
     - name: Get instances
       oci_compute_instance_facts:
         config_file_location: "{{ config_file }}"
