@@ -23,11 +23,14 @@
         compartment_id: "{{ compartment_ocid }}"
       register: instance_list
 
-    - name: Filter running instances
+    - name: Filter RUNNING instances
       set_fact:
-        running_instances: "{{ instance_list.instances | selectattr('lifecycle_state','equalto','RUNNING') | list }}"
+        running_instances: >
+          {{ instance_list.instances
+             | selectattr('lifecycle_state','equalto','RUNNING')
+             | list }}
 
-    - name: Run command via OCI Run Command
+    - name: Run command using OCI Run Command
       oci_compute_instance_action:
         config_file_location: "{{ config_file }}"
         config_profile_name: "{{ profile }}"
