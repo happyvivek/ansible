@@ -1,43 +1,42 @@
 ---
-- name: Run command on ALL VMs in compartment using OCI Run Command
+- name: Run command on ALL VMs in compartment
   hosts: localhost
   connection: local
   gather_facts: no
+
+  collections:
+    - oracle.oci
 
   vars:
     config_file: "~/.oci/config"
     profile: "DEFAULT"
     region: "us-ashburn-1"
-    compartment_ocid: "ocid1.compartment.oc1..aaaaaaaaswfncccqcgnx77btfb42d2fzclr54ewepxnfvquwzvvhtf6vibea"
+    compartment_ocid: "ocid1.compartment.oc1..xxxx"
 
   tasks:
 
-    - name: Get all compute instances in compartment
-      oracle.oci.oci_compute_instance_facts:
+    - name: Get instances
+      oci_compute_instance_facts:
         config_file_location: "{{ config_file }}"
         config_profile_name: "{{ profile }}"
         region: "{{ region }}"
         compartment_id: "{{ compartment_ocid }}"
       register: instance_list
 
-    - name: Filter only RUNNING instances
+    - name: Filter running instances
       set_fact:
         running_instances: "{{ instance_list.instances | selectattr('lifecycle_state','equalto','RUNNING') | list }}"
 
-    - name: Run command on each running VM
-      oracle.oci.oci_compute_instance_run_command:
+    - name: Run command via OCI Run Command
+      oci_compute_instance_action:
         config_file_location: "{{ config_file }}"
         config_profile_name: "{{ profile }}"
         region: "{{ region }}"
         instance_id: "{{ item.id }}"
-        command: |
-          #!/bin/bash
-          echo "Running on $(hostname)"
-          uptime
+        action: RUN_COMMAND
+        run_command_details:
+          command: |
+            #!/bin/bash
+            hostname
+            date
       loop: "{{ running_instances }}"
-      register: run_results
-
-    - name: Show execution summary
-      debug:
-        msg: "Executed on {{ item.item.display_name }}"
-      loop: "{{ run_results.results }}"
