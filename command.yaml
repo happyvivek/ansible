@@ -1,49 +1,45 @@
 ---
-- name: Run command on ALL VMs in compartment
+- name: Run command on all running VMs using OCI Instance Agent
   hosts: localhost
   connection: local
   gather_facts: no
 
-  collections:
-    - oracle.oci
-
   vars:
-    config_file: "~/.oci/config"
-    profile: "DEFAULT"
     region: "us-ashburn-1"
     compartment_ocid: "ocid1.compartment.oc1..aaaaaaaaswfncccqcgnx77btfb42d2fzclr54ewepxnfvquwzvvhtf6vibea"
 
   tasks:
-    - name: Show installed collections inside AWX job
-      command: ansible-galaxy collection list
-      register: col_output
-    - debug:
-        var: col_output.stdout          
-    - name: Get instances
-      oci_compute_instance_facts:
-        config_file_location: "{{ config_file }}"
-        config_profile_name: "{{ profile }}"
-        region: "{{ region }}"
+
+    - name: Get running instances
+      oracle.oci.oci_compute_instance_facts:
         compartment_id: "{{ compartment_ocid }}"
+        region: "{{ region }}"
       register: instance_list
 
-    - name: Filter running
+    - name: Filter RUNNING instances
       set_fact:
         running_instances: >
           {{ instance_list.instances
              | selectattr('lifecycle_state','equalto','RUNNING')
              | list }}
 
-    - name: Run command
-      oci_compute_instance_action:
-        config_file_location: "{{ config_file }}"
-        config_profile_name: "{{ profile }}"
+    - name: Run command via Instance Agent
+      oracle.oci.oci_compute_instance_agent_instance_agent_command:
+        compartment_id: "{{ compartment_ocid }}"
         region: "{{ region }}"
-        instance_id: "{{ item.id }}"
-        action: RUN_COMMAND
-        run_command_details:
-          command: |
+        display_name: "ansible-run-command"
+        target:
+          instance_ids:
+            - "{{ item.id }}"
+        content:
+          content_type: "TEXT"
+          content: |
             #!/bin/bash
-            hostname
-            date
+            echo "Running on $(hostname)"
+            uptime
       loop: "{{ running_instances }}"
+      register: run_result
+
+    - name: Show results
+      debug:
+        var: run_result
