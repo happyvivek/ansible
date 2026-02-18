@@ -32,7 +32,7 @@
           instance_ids:
             - "{{ item.id }}"
         content:
-          content_type: "TEXT"
+          source: INLINE
           content: |
             #!/bin/bash
             echo "Running on $(hostname)"
